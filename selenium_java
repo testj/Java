@@ -1,1 +1,8 @@
-
+//WebDriverWait设置元素等待时间
+public void waitForLoad(final By elementBy) {  
+        WebDriverWait wait = (new WebDriverWait(driver, 30));  
+        wait.until(new ExpectedCondition<Boolean>() {  
+            public Boolean apply(WebDriver d) {  
+                boolean loadcomplete = d.findElement(elementBy).isDisplayed();  
+                return loadcomplete;  
+            }  
