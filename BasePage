@@ -1,0 +1,185 @@
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.awt.*;    
+import java.awt.image.*;  
+
+import javax.imageio.*;
+
+import jxl.Cell;
+import jxl.Sheet;
+import jxl.Workbook;
+
+import org.apache.commons.io.FileUtils;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import static org.junit.Assert.*;
+
+public class BasePage {
+	private WebDriver driver;
+	private String base_url;
+	private String pagetitle;
+	static jxl.Workbook readwb;
+	
+	BasePage(WebDriver d,String base_url,String pagetitle){
+		this.driver=d;
+		this.base_url=base_url;
+		this.pagetitle=pagetitle;
+	}
+	
+	//打开页面，检查页面加载是否正确
+	public void _openurl(String url,String title){
+		this.driver.get(url);
+		this.driver.manage().window().maximize();
+		//检查打开连接地址与配置是否一致
+		assertEquals(title,this.driver.getTitle());
+	}
+	
+	public void openurl(){
+		_openurl(this.base_url,this.pagetitle);
+	}
+	
+	//重写元素定位方法
+	public WebElement findElement(final By elementBy){
+		WebElement myDynamicElement = (new WebDriverWait(driver, 10)) 
+				.until(new ExpectedCondition<WebElement>(){ 
+				@Override 
+				public WebElement apply(WebDriver d) { 
+				return d.findElement(elementBy); 
+				}});
+		return myDynamicElement;
+	}
+	
+	//重写一组元素定位方法
+	public List<WebElement> findElements(final By elementsBy){
+		try{
+			if(!this.driver.findElements(elementsBy).isEmpty()){
+				return this.driver.findElements(elementsBy);
+			}
+			else{
+				return null;
+				}
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}	
+	}
+	//读取excel的table
+	public static Sheet readtable(String filepath,int sheetno){
+		try{
+		InputStream instream=new FileInputStream(filepath);
+		jxl.Workbook readwb=Workbook.getWorkbook(instream);
+		Sheet readsheet=readwb.getSheet(sheetno);
+		return readsheet;
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	//读取元素标签和元素唯一标识
+	public static List<String> readxls(String index,String filepath,int sheetno){
+		/*
+		filepath: 文件路径
+		sheetno：Sheet编号
+		index: 元素编号
+		返回值内容为：("id","inputid")、("xpath","/html/body/header/div[1]/nav")格式
+		*/
+		List<String> contents=new ArrayList<String>();
+		try{
+			Sheet readsheet=readtable(filepath,sheetno);
+            //获取Sheet表中所包含的总行数   
+            int rsRows = readsheet.getRows(); 
+            for(int i=1;i<rsRows;i++){
+            	Cell[] row_value=readsheet.getRow(i);
+            	for(Cell cell:row_value){
+            		String cell_value=cell.getContents();
+            		if(index.equals(cell_value)){
+            			for(Cell cell1:row_value){
+            				contents.add(cell1.getContents());
+            				contents.remove(index);
+            			}
+            		}
+            	}
+            }
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}finally{
+			readwb.close();
+		}
+   		return contents;
+	}
+	
+	//生成图片名称
+	public String savePngName(String name){
+		 DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+		 DateFormat format2=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+		 String day = format.format(new Date());
+		 String time=format2.format(new Date());
+		 String fp="./test-output/cngold_service/"+day+"/image";
+		 File file=new File(fp);
+		 if(!file.exists()){
+			 file.mkdirs();
+			 String filename=fp+"/"+time+"_"+name+".png";
+			 return filename;
+		 }
+		 else{
+			 String filename=fp+"/"+time+"_"+name+".png";
+			 return filename;
+		 }
+	}
+		 
+		 /** 捕捉全屏慕 */  
+		public BufferedImage captureFullScreen() throws AWTException {
+			Robot robot = new Robot();
+			Dimension d = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
+			int width = (int) d.getWidth();
+			int height = (int) d.getHeight(); 
+			Image image = robot.createScreenCapture(new Rectangle(0, 0, width,
+		            height));
+			BufferedImage bi = new BufferedImage(width, height,
+			        BufferedImage.TYPE_INT_RGB);  
+			Graphics g = bi.createGraphics();
+		    g.drawImage(image, 0, 0, width, height, null);
+		    return bi;  
+		    }  
+			
+			 /** 储存为一个文件,为PNG格式 
+			 * @throws AWTException */  
+		 public void saveAsPNG(String name) throws IOException, AWTException {  
+		    ImageIO.write(captureFullScreen(), "png", new File(savePngName(name)));  
+		    } 
+		 
+	//通过图片名称，进行截图保存
+	public void saveScreenshot(TakesScreenshot drivername,String name){
+		 // this method will take screen shot ,require two parameters ,one is driver name, another is file name
+			File scrFile = drivername.getScreenshotAs(OutputType.FILE);
+			try{
+				FileUtils.copyFile(scrFile, new File(name));
+			}catch(IOException e){
+				e.printStackTrace();
+			}
+	}
+}
+
